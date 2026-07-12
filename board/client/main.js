@@ -4,24 +4,35 @@ import { createFallback, detectWebGL, shouldUseFallback } from './fallback.js';
 
 const app = document.getElementById('app');
 const count = document.getElementById('count');
+const toasts = document.getElementById('toasts');
 const gl = detectWebGL();
 const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 let lastShips = [];
 let view = makeView(shouldUseFallback({ gl, reducedMotion: mql.matches }));
 
+function showLiftoff(callsign) {
+  if (!toasts) return;
+  // Cap the stack so a class-end launch burst can't run toasts off-screen over the scene.
+  while (toasts.children.length >= 5) toasts.firstChild.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = `LIFTOFF ✦ @${callsign}`;
+  toasts.append(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 400); }, 3000);
+}
+
 function makeView(useFallback) {
-  const v = useFallback ? createFallback(app) : createScene(app);
+  const v = useFallback ? createFallback(app) : createScene(app, { onLiftoff: showLiftoff });
   v.update(lastShips);
   return v;
 }
 
-// Real dispose caller #1: user toggles reduced-motion → tear down + swap.
 mql.addEventListener('change', (e) => {
   view.dispose();
   view = makeView(shouldUseFallback({ gl, reducedMotion: e.matches }));
 });
-// Real dispose caller #2: page teardown.
 window.addEventListener('pagehide', () => view.dispose());
 
 function connect() {
