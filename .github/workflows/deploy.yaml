@@ -1,18 +1,8 @@
-name: Ship It
+name: cicd
 
 on:
   pull_request:
-    branches: [main]
     types: [opened, synchronize, reopened, closed]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 defaults:
   run:
@@ -24,24 +14,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: launchpad/package-lock.json
-
-      - name: Install dependencies
-        run: npm clean-install
-
-      - name: Run pre-flight test
-        run: npm run test
-
-      - name: Report result to dashboard
-        run: bash scripts/report.sh
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+      - run: npm clean-install
+      - run: npm run test
+      - run: bash scripts/report.sh
         env:
           BOARD_URL: ${{ vars.BOARD_URL }}
           SHIPIT_TOKEN: ${{ secrets.SHIPIT_TOKEN }}
@@ -51,35 +28,19 @@ jobs:
     if: always() && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: launchpad/package-lock.json
-
-      - name: Install dependencies
-        run: npm clean-install
-
-      - name: Build application
-        run: npm run build
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+      - run: npm clean-install
+      - run: npm run build
         env:
           VITE_BOARD_URL: ${{ vars.BOARD_URL }}
           VITE_CALLSIGN: ${{ github.actor }}
-
-      - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: launchpad/dist
+      - uses: actions/deploy-pages@v5
 
-      - name: Deploy GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v5
+permissions:
+  pages: write
+  id-token: write
